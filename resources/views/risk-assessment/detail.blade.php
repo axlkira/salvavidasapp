@@ -11,12 +11,10 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h2>Evaluación #{{ $assessment->id }}</h2>
                 <div>
-                    <a href="{{ route('dashboard') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
-                    </a>
-                    <a href="#" class="btn btn-primary" onclick="window.print()">
-                        <i class="fas fa-print"></i> Imprimir
-                    </a>
+                    <button type="button" class="print-btn" onclick="printAssessment()">
+                        <span class="print-btn-icon"><i class="fas fa-print"></i></span>
+                        <span class="print-btn-text">Imprimir Evaluación</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -248,6 +246,139 @@
     </div>
 </div>
 
+<!-- Versión para impresión -->
+<div id="printable-assessment" style="display: none;">
+    <div class="print-assessment-header">
+        <div class="print-logo-container">
+            <img src="{{ asset('img/logo.png') }}" alt="SalvaVidas" class="print-logo-main">
+        </div>
+        <div class="print-title-container">
+            <h1>Evaluación de Riesgo #{{ $assessment->id }}</h1>
+            <p class="print-date">Fecha: {{ $assessment->created_at->format('d/m/Y') }}</p>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-header">
+            <h2>Información General</h2>
+        </div>
+        <div class="print-section-content">
+            <div class="print-info-grid">
+                <div class="print-info-item">
+                    <span class="print-label">Paciente:</span>
+                    <span class="print-value">{{ $patientName }}</span>
+                </div>
+                <div class="print-info-item">
+                    <span class="print-label">Documento:</span>
+                    <span class="print-value">{{ $assessment->patient_document ?: 'No disponible' }}</span>
+                </div>
+                <div class="print-info-item">
+                    <span class="print-label">Profesional:</span>
+                    <span class="print-value">{{ $professionalName }}</span>
+                </div>
+                <div class="print-info-item">
+                    <span class="print-label">Nivel de Riesgo:</span>
+                    <span class="print-value print-risk-level print-risk-{{ $assessment->risk_level }}">{{ ucfirst($assessment->risk_level) }}</span>
+                </div>
+                <div class="print-info-item">
+                    <span class="print-label">Estado:</span>
+                    <span class="print-value">{{ $statusLabel }}</span>
+                </div>
+                @if($assessment->reviewed_at)
+                <div class="print-info-item">
+                    <span class="print-label">Revisado por:</span>
+                    <span class="print-value">{{ $reviewerName }} ({{ $assessment->reviewed_at->format('d/m/Y H:i') }})</span>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-header">
+            <h2>Factores de Riesgo Identificados</h2>
+        </div>
+        <div class="print-section-content">
+            @if(count($riskFactors) > 0)
+                <ul class="print-list">
+                    @foreach($riskFactors as $factor)
+                        <li>
+                            <span class="print-factor-description">{{ $factor->description }}</span>
+                            <span class="print-factor-weight">Peso: {{ $factor->weight }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="print-no-data">No se han identificado factores de riesgo específicos.</p>
+            @endif
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-header">
+            <h2>Señales de Advertencia</h2>
+        </div>
+        <div class="print-section-content">
+            @if(count($warningSigns) > 0)
+                <ul class="print-list">
+                    @foreach($warningSigns as $sign)
+                        <li>
+                            <span class="print-factor-description">{{ $sign->description }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="print-no-data">No se han identificado señales de advertencia específicas.</p>
+            @endif
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-header">
+            <h2>Fragmentos Relevantes de la Conversación</h2>
+        </div>
+        <div class="print-section-content">
+            @if(count($relevantMessages) > 0)
+                <div class="print-messages">
+                    @foreach($relevantMessages as $message)
+                        <div class="print-message print-message-{{ $message->role }}">
+                            <div class="print-message-header">
+                                <span class="print-message-role">{{ $message->role == 'user' ? 'Paciente' : 'Asistente' }}</span>
+                                <span class="print-message-time">{{ $message->created_at->format('d/m/Y H:i') }}</span>
+                            </div>
+                            <div class="print-message-content">
+                                @php
+                                    $content = e($message->content);
+                                    // Procesar negritas
+                                    $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
+                                    // Procesar cursivas
+                                    $content = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $content);
+                                    // Procesar listas con guiones
+                                    $content = preg_replace('/^- (.*)$/m', '• $1', $content);
+                                    // Procesar saltos de línea
+                                    $content = nl2br($content);
+                                @endphp
+                                {!! $content !!}
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="print-no-data">No hay mensajes relevantes para mostrar.</p>
+            @endif
+        </div>
+    </div>
+    
+    <div class="print-footer">
+        <div class="print-footer-left">
+            SalvaVidas - Sistema de Evaluación de Riesgo
+        </div>
+        <div class="print-footer-right">
+            Página <span class="page"></span> de <span class="pages"></span>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de Guía de Intervención -->
 <div class="modal fade" id="interventionModal" tabindex="-1" aria-labelledby="interventionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -387,6 +518,66 @@
 
 @push('styles')
 <style>
+    /* Botón de impresión profesional */
+    .print-btn {
+        display: inline-flex;
+        align-items: center;
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .print-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .print-btn:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .print-btn-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(255, 255, 255, 0.15);
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .print-btn-text {
+        padding: 0 20px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    /* Animación para el botón */
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(75, 108, 183, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(75, 108, 183, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(75, 108, 183, 0);
+        }
+    }
+    
+    .print-btn:hover {
+        animation: pulse 1.5s infinite;
+    }
+    
     /* Estilos generales */
     .risk-score-circle {
         width: 100px;
@@ -478,14 +669,217 @@
         }
     }
     /* Estilos para impresión - Diseño profesional */
+    /* Estilos para la versión imprimible profesional */
+    #printable-assessment {
+        font-family: 'Arial', sans-serif;
+        color: #333;
+        line-height: 1.5;
+        max-width: 210mm; /* Ancho A4 */
+        margin: 0 auto;
+        background-color: white;
+    }
+    
+    .print-assessment-header {
+        display: flex;
+        align-items: center;
+        padding: 20px 0;
+        border-bottom: 2px solid #0C6EFD;
+        margin-bottom: 30px;
+    }
+    
+    .print-logo-container {
+        width: 120px;
+        margin-right: 20px;
+    }
+    
+    .print-logo-main {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .print-title-container h1 {
+        font-size: 24px;
+        color: #0C6EFD;
+        margin: 0 0 5px 0;
+        font-weight: bold;
+    }
+    
+    .print-date {
+        font-size: 14px;
+        color: #666;
+        margin: 0;
+    }
+    
+    .print-section {
+        margin-bottom: 25px;
+        page-break-inside: avoid;
+    }
+    
+    .print-section-header {
+        background-color: #f8f9fa;
+        border-left: 5px solid #0C6EFD;
+        padding: 10px 15px;
+        margin-bottom: 15px;
+    }
+    
+    .print-section-header h2 {
+        font-size: 18px;
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    .print-section-content {
+        padding: 0 15px;
+    }
+    
+    .print-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-gap: 15px;
+    }
+    
+    .print-info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .print-label {
+        font-weight: bold;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+    
+    .print-value {
+        font-size: 15px;
+    }
+    
+    .print-risk-level {
+        font-weight: bold;
+        padding: 3px 8px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .print-risk-bajo {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+    
+    .print-risk-medio {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .print-risk-alto {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .print-risk-crítico, .print-risk-critico {
+        background-color: #212529;
+        color: #fff;
+    }
+    
+    .print-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .print-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .print-factor-weight {
+        font-weight: bold;
+        color: #dc3545;
+        background-color: #f8f9fa;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 13px;
+    }
+    
+    .print-no-data {
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .print-messages {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .print-message {
+        padding: 10px 15px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    
+    .print-message-user {
+        background-color: #f0f7ff;
+        border-left: 4px solid #0C6EFD;
+    }
+    
+    .print-message-assistant {
+        background-color: #f8f9fa;
+        border-left: 4px solid #6c757d;
+    }
+    
+    .print-message-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .print-message-role {
+        font-weight: bold;
+        color: #0C6EFD;
+    }
+    
+    .print-message-time {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    
+    .print-message-content {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    .print-footer {
+        margin-top: 30px;
+        padding-top: 15px;
+        border-top: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #6c757d;
+    }
+    
     @media print {
         @page {
-            size: A4;
-            margin: 0.5cm 1cm 1.5cm 1cm; /* Aumentado el margen inferior para el pie de página */
+            size: A4 portrait;
+            margin: 1cm 1cm 1.5cm 1cm;
         }
         
         body * {
             visibility: hidden;
+        }
+        
+        #printable-assessment, #printable-assessment * {
+            visibility: visible;
         }
         
         /* Mostrar solo el modal y sus contenidos */
@@ -698,6 +1092,65 @@
 
 @push('scripts')
 <script>
+    function printAssessment() {
+        // Mostrar la versión imprimible
+        document.getElementById('printable-assessment').style.display = 'block';
+        
+        // Ocultar temporalmente el modal si está abierto
+        const modal = document.getElementById('interventionModal');
+        const isModalOpen = modal.classList.contains('show');
+        if (isModalOpen) {
+            modal.style.display = 'none';
+        }
+        
+        // Configurar numeración de páginas
+        const style = document.createElement('style');
+        style.id = 'print-page-style';
+        style.innerHTML = `
+            @media print {
+                .print-footer .page:after {
+                    content: counter(page);
+                }
+                .print-footer .pages:after {
+                    content: counter(pages);
+                }
+                @page {
+                    counter-increment: page;
+                    counter-reset: pages;
+                }
+                #printable-assessment {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: auto;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Activar la impresión
+        setTimeout(() => {
+            window.print();
+            
+            // Restaurar después de imprimir
+            setTimeout(() => {
+                document.getElementById('printable-assessment').style.display = 'none';
+                
+                // Restaurar el modal si estaba abierto
+                if (isModalOpen) {
+                    modal.style.display = 'block';
+                }
+                
+                // Eliminar estilos temporales
+                const tempStyle = document.getElementById('print-page-style');
+                if (tempStyle) {
+                    tempStyle.remove();
+                }
+            }, 500);
+        }, 300);
+    }
+    
     function printGuide() {
         // Mostrar elementos ocultos para impresión
         document.querySelector('.print-header').style.display = 'flex';
