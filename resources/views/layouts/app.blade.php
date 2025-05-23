@@ -345,6 +345,12 @@
                 <div class="menu-category">Evaluación de Riesgo</div>
                 <ul class="menu-item list-unstyled">
                     <li>
+                        <a href="{{ route('risk-assessment.index') }}" class="menu-link {{ request()->routeIs('risk-assessment.*') ? 'active' : '' }}">
+                            <i class="menu-icon fas fa-exclamation-triangle"></i>
+                            <span class="menu-text">Evaluaciones de Riesgo</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('risk.index') }}" class="menu-link {{ request()->routeIs('risk.index') ? 'active' : '' }}">
                             <i class="menu-icon fas fa-clipboard-list"></i>
                             <span class="menu-text">Evaluaciones</span>

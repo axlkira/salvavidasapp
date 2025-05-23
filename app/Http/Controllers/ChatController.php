@@ -9,7 +9,9 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Individual;
 use App\Models\UsuarioProtocolo;
+use App\Models\RiskAssessment;
 use App\Services\AI\OllamaProvider;
+use App\Services\RiskDetectionService;
 use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
@@ -190,16 +192,13 @@ Sigue estas directrices al responder:
                                })
                                ->toArray();
             
-            // Verificar si hay un paciente asociado a esta conversación
+            // Verificar si la conversación tiene un paciente asociado o si es una consulta general
             if ($conversation->patient_document) {
-                // Obtener información del paciente
+                // Obtener información del paciente y su historia clínica
                 $patient = PrincipalIntegrante::where('documento', $conversation->patient_document)->first();
-                
-                // Obtener historias clínicas del paciente
                 $historiasClinicas = Individual::where('Documento', $conversation->patient_document)
-                                    ->orderBy('id', 'desc')
-                                    ->take(1) // Solo la más reciente para no sobrecargar el contexto
-                                    ->first();
+                                             ->orderBy('FechaInicio', 'desc')
+                                             ->first();
                 
                 // Si encontramos al paciente y tiene historias clínicas, añadir esta información al contexto
                 if ($patient && $historiasClinicas) {
@@ -273,6 +272,28 @@ Sigue estas directrices al responder:
                         'has_historia_clinica' => !empty($historiasClinicas)
                     ]);
                 }
+            } else if (stripos($userMessage->content, 'riesgo') !== false || 
+                       stripos($userMessage->content, 'suicidio') !== false || 
+                       stripos($userMessage->content, 'pacientes') !== false) {
+                // Si la conversación es general pero pregunta sobre riesgo o pacientes
+                try {
+                    // Establecer un límite de tiempo para esta operación
+                    set_time_limit(30); // 30 segundos máximo
+                    
+                    // Añadir un mensaje simplificado si la consulta es sobre pacientes en riesgo
+                    $infoRiesgo = "Puedo analizar las historias clínicas para identificar pacientes con posibles factores de riesgo suicida. "
+                               . "Para hacer esto de manera eficiente, por favor, realiza una pregunta específica sobre qué tipo de riesgo "
+                               . "te interesa evaluar, o si prefieres, inicia una nueva conversación con el número de documento de un paciente específico."; 
+                    
+                    array_splice($messages, 1, 0, [[
+                        'role' => 'system',
+                        'content' => $infoRiesgo
+                    ]]);
+                    
+                    Log::info('Información sobre capacidad de análisis de riesgo añadida al contexto');
+                } catch (\Exception $e) {
+                    Log::error('Error al procesar información de riesgo', ['error' => $e->getMessage()]);
+                }
             }
             
             // Conectar con el proveedor de IA (Ollama)
@@ -292,6 +313,44 @@ Sigue estas directrices al responder:
                 
                 // Actualizar la fecha de última modificación de la conversación
                 $conversation->touch();
+                
+                // Analizar riesgo en segundo plano en estos casos:
+                // 1. Si la conversación tiene 3 o más mensajes (análisis estándar)
+                // 2. Si el profesional está consultando específicamente sobre historia clínica o riesgo
+                $shouldAnalyzeRisk = false;
+                
+                if ($conversation->messages()->count() >= 3) {
+                    $shouldAnalyzeRisk = true;
+                } else {
+                    // Analizar el contenido del mensaje para ver si se consulta historia clínica o riesgo
+                    $keywords = ['historia clínica', 'antecedentes', 'riesgo', 'suicida', 'ideación', 
+                                'autolesiones', 'valoración', 'diagnóstico', 'evaluación',
+                                'daño', 'peligro'];
+                    
+                    $content = strtolower($request->input('content'));
+                    foreach ($keywords as $keyword) {
+                        if (strpos($content, $keyword) !== false) {
+                            $shouldAnalyzeRisk = true;
+                            Log::info('Análisis de riesgo activado por palabra clave en consulta del profesional', [
+                                'keyword' => $keyword,
+                                'conversation_id' => $conversation->id
+                            ]);
+                            break;
+                        }
+                    }
+                }
+                
+                if ($shouldAnalyzeRisk) {
+                    try {
+                        // Ejecutar el análisis de riesgo de manera no bloqueante
+                        $this->analyzeRiskAsync($conversation->id);
+                    } catch (\Exception $e) {
+                        Log::error('Error al programar análisis de riesgo', [
+                            'conversation_id' => $conversation->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
                 
                 return response()->json([
                     'success' => true,
@@ -357,5 +416,143 @@ Sigue estas directrices al responder:
         $content = preg_replace('/[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $content);
         
         return $content;
+    }
+    
+    /**
+     * Obtiene una lista de pacientes con posible riesgo de suicidio basado en su historia clínica
+     * 
+     * @return string Texto con información de pacientes en riesgo
+     */
+    private function obtenerPacientesEnRiesgo()
+    {
+        // Establecer límite de tiempo de ejecución más alto para esta operación
+        ini_set('max_execution_time', 60); // 60 segundos
+        
+        // Palabras clave que podrían indicar riesgo de suicidio
+        $palabrasClave = [
+            'suicid', 'autolesion', 'desesperanza', 'depresi', 'crisis', 
+            'muerte', 'morir', 'acabar', 'sin salida', 'intento'
+        ];
+        
+        // Obtener solo las historias clínicas más recientes y limitar la cantidad
+        $historias = Individual::orderBy('FechaInicio', 'desc')
+                     ->limit(100) // Limitar a 100 registros recientes
+                     ->get();
+        
+        Log::info('Buscando pacientes en riesgo', ['cantidad_historias' => count($historias)]);
+        
+        $pacientesRiesgo = [];
+        
+        foreach ($historias as $historia) {
+            $factoresRiesgo = [];
+            $textosClinicos = [
+                $historia->AntecedentesClinicosFisicosMentales,
+                $historia->PersonalesPsicosociales,
+                $historia->ProblematicaActual,
+                $historia->ImprecionDiagnostica,
+                $historia->Observaciones
+            ];
+            
+            foreach ($textosClinicos as $texto) {
+                if (empty($texto)) continue;
+                
+                foreach ($palabrasClave as $palabra) {
+                    if (stripos($texto, $palabra) !== false) {
+                        // Paciente con posible riesgo
+                        $paciente = PrincipalIntegrante::where('documento', $historia->Documento)->first();
+                        if ($paciente) {
+                            $nombre = trim($paciente->nombre1 . ' ' . $paciente->nombre2 . ' ' . 
+                                         $paciente->apellido1 . ' ' . $paciente->apellido2);
+                            
+                            $factorRiesgo = $palabra . ': ' . substr($texto, max(0, stripos($texto, $palabra) - 30), 60);
+                            
+                            if (!isset($pacientesRiesgo[$paciente->documento])) {
+                                $pacientesRiesgo[$paciente->documento] = [
+                                    'nombre' => $nombre,
+                                    'documento' => $paciente->documento,
+                                    'factores' => []
+                                ];
+                            }
+                            
+                            if (!in_array($factorRiesgo, $pacientesRiesgo[$paciente->documento]['factores'])) {
+                                $pacientesRiesgo[$paciente->documento]['factores'][] = $factorRiesgo;
+                            }
+                        }
+                        
+                        break; // Si encontramos un término, no seguimos buscando más en este texto
+                    }
+                }
+            }
+        }
+        
+        // Limitar a los 5 pacientes con más factores de riesgo
+        usort($pacientesRiesgo, function($a, $b) {
+            return count($b['factores']) - count($a['factores']);
+        });
+        
+        $pacientesRiesgo = array_slice($pacientesRiesgo, 0, 5);
+        
+        // Formatear respuesta
+        if (empty($pacientesRiesgo)) {
+            return "No se han encontrado pacientes con factores de riesgo de suicidio en la base de datos.";
+        }
+        
+        $respuesta = "INFORMACIÓN DE PACIENTES CON POSIBLES FACTORES DE RIESGO SUICIDA:\n\n";
+        
+        foreach ($pacientesRiesgo as $paciente) {
+            $respuesta .= "- Paciente: {$paciente['nombre']} (Documento: {$paciente['documento']})\n";
+            $respuesta .= "  Factores de riesgo identificados: " . count($paciente['factores']) . "\n";
+            $respuesta .= "  Ejemplos: \n";
+            
+            // Mostrar solo los primeros 3 factores para no sobrecargar
+            $factoresMostrados = array_slice($paciente['factores'], 0, 3);
+            foreach ($factoresMostrados as $factor) {
+                $respuesta .= "    * {$factor}\n";
+            }
+            
+            $respuesta .= "\n";
+        }
+        
+        $respuesta .= "\nNOTA: Esta información se basa en un análisis automático de palabras clave ";
+        $respuesta .= "en la historia clínica y debe ser verificada por un profesional. ";
+        $respuesta .= "Puedes solicitar más detalles sobre un paciente específico iniciando una ";
+        $respuesta .= "nueva conversación con su número de documento.";
+        
+        return $respuesta;
+    }
+    
+    /**
+     * Analiza el riesgo de una conversación en segundo plano
+     *
+     * @param int $conversationId ID de la conversación a analizar
+     * @return void
+     */
+    protected function analyzeRiskAsync($conversationId)
+    {
+        try {
+            // Ejecutamos el análisis en el mismo hilo para simplicidad
+            // En un entorno de producción se recomendaría usar colas (Jobs) de Laravel
+            $conversation = Conversation::with('messages')->findOrFail($conversationId);
+            $riskService = new RiskDetectionService();
+            $assessment = $riskService->analyzeConversation($conversation);
+            
+            if ($assessment && ($assessment->risk_level == 'alto' || $assessment->risk_level == 'crítico')) {
+                Log::alert('ALERTA: Se ha detectado un paciente con alto riesgo de suicidio', [
+                    'conversation_id' => $conversationId,
+                    'patient_document' => $conversation->patient_document,
+                    'risk_level' => $assessment->risk_level,
+                    'risk_score' => $assessment->risk_score,
+                ]);
+                
+                // Aquí se podría implementar un sistema de notificaciones
+                // para alertar a los profesionales sobre el riesgo detectado
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al analizar riesgo de conversación', [
+                'conversation_id' => $conversationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 }

@@ -15,7 +15,7 @@
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-card-info">
-                        <div class="stat-card-value">1,250</div>
+                        <div class="stat-card-value">{{ number_format($stats['total_patients']) }}</div>
                         <div class="stat-card-title">Pacientes Totales</div>
                     </div>
                 </div>
@@ -32,7 +32,7 @@
                         <i class="fas fa-clipboard-check"></i>
                     </div>
                     <div class="stat-card-info">
-                        <div class="stat-card-value">218</div>
+                        <div class="stat-card-value">{{ number_format($stats['total_assessments']) }}</div>
                         <div class="stat-card-title">Evaluaciones</div>
                     </div>
                 </div>
@@ -49,8 +49,8 @@
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <div class="stat-card-info">
-                        <div class="stat-card-value">42</div>
-                        <div class="stat-card-title">Casos Alto Riesgo</div>
+                        <div class="stat-card-value">{{ number_format($stats['high_risk_count']) }}</div>
+                        <div class="stat-card-title">Alto Riesgo</div>
                     </div>
                 </div>
                 <div class="stat-card-footer">
@@ -66,8 +66,8 @@
                         <i class="fas fa-comment-medical"></i>
                     </div>
                     <div class="stat-card-info">
-                        <div class="stat-card-value">356</div>
-                        <div class="stat-card-title">Conversaciones IA</div>
+                        <div class="stat-card-value">{{ number_format($stats['total_conversations']) }}</div>
+                        <div class="stat-card-title">Conversaciones</div>
                     </div>
                 </div>
                 <div class="stat-card-footer">
@@ -110,66 +110,38 @@
                 <div class="card-header">
                     <h5 class="card-title">Pacientes de Alto Riesgo</h5>
                     <div class="card-actions">
-                        <a href="{{ route('risk.index') }}?risk_level=alto" class="btn btn-sm btn-light">Ver Todos</a>
+                        <a href="{{ route('risk-assessment.index', ['risk_level' => 'alto']) }}" class="btn btn-sm btn-light">Ver Todos</a>
                     </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="high-risk-list">
-                        <div class="high-risk-item">
-                            <div class="patient-info">
-                                <div class="patient-name">Carlos Martínez</div>
-                                <div class="patient-details">35 años - 89% riesgo</div>
+                        @if(count($highRiskPatients) > 0)
+                            @foreach($highRiskPatients as $patient)
+                                <div class="high-risk-item">
+                                    <div class="patient-info">
+                                        <div class="patient-name">{{ $patient['patient_name'] }}</div>
+                                        <div class="patient-details">
+                                            <span class="badge @if($patient['risk_level'] == 'crítico') badge-danger @else badge-warning @endif">{{ ucfirst($patient['risk_level']) }}</span>
+                                            - {{ number_format($patient['risk_score'], 1) }} puntos
+                                        </div>
+                                        @if(!empty($patient['risk_factors']))
+                                            <div class="risk-factors small text-muted">
+                                                {{ Str::limit(implode(', ', $patient['risk_factors']), 100) }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="patient-actions">
+                                        <a href="{{ route('chat.show', $patient['conversation_id']) }}" class="btn btn-sm btn-danger" title="Ver conversación">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="empty-state">
+                                <p class="text-center">No hay pacientes con alto riesgo actualmente.</p>
                             </div>
-                            <div class="patient-actions">
-                                <a href="#" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </div>
-                        <div class="high-risk-item">
-                            <div class="patient-info">
-                                <div class="patient-name">Laura Gómez</div>
-                                <div class="patient-details">19 años - 85% riesgo</div>
-                            </div>
-                            <div class="patient-actions">
-                                <a href="#" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </div>
-                        <div class="high-risk-item">
-                            <div class="patient-info">
-                                <div class="patient-name">Javier Rodríguez</div>
-                                <div class="patient-details">42 años - 78% riesgo</div>
-                            </div>
-                            <div class="patient-actions">
-                                <a href="#" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </div>
-                        <div class="high-risk-item">
-                            <div class="patient-info">
-                                <div class="patient-name">María Sánchez</div>
-                                <div class="patient-details">28 años - 75% riesgo</div>
-                            </div>
-                            <div class="patient-actions">
-                                <a href="#" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </div>
-                        <div class="high-risk-item">
-                            <div class="patient-info">
-                                <div class="patient-name">Roberto Fernández</div>
-                                <div class="patient-details">52 años - 72% riesgo</div>
-                            </div>
-                            <div class="patient-actions">
-                                <a href="#" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -183,7 +155,7 @@
                 <div class="card-header">
                     <h5 class="card-title">Últimas Evaluaciones</h5>
                     <div class="card-actions">
-                        <a href="{{ route('risk.index') }}" class="btn btn-sm btn-light">Ver Todas</a>
+                        <a href="{{ route('risk-assessment.index') }}" class="btn btn-sm btn-light">Ver Todas</a>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -194,60 +166,34 @@
                                     <th>Paciente</th>
                                     <th>Fecha</th>
                                     <th>Nivel de Riesgo</th>
+                                    <th>Puntuación</th>
+                                    <th>Fecha</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>Ana Castillo</td>
-                                    <td>22/05/2025</td>
-                                    <td><span class="badge bg-success">Bajo</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Miguel Torres</td>
-                                    <td>21/05/2025</td>
-                                    <td><span class="badge bg-warning">Moderado</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Laura Gómez</td>
-                                    <td>20/05/2025</td>
-                                    <td><span class="badge bg-danger">Alto</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>José Ramírez</td>
-                                    <td>18/05/2025</td>
-                                    <td><span class="badge bg-warning">Moderado</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Carmen Vega</td>
-                                    <td>15/05/2025</td>
-                                    <td><span class="badge bg-success">Bajo</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
+                                @if(count($latestAssessments) > 0)
+                                    @foreach($latestAssessments as $assessment)
+                                        <tr>
+                                            <td>{{ $assessment['patient_name'] }}</td>
+                                            <td>{{ $assessment['created_at']->format('d/m/Y') }}</td>
+                                            <td>
+                                                <span class="badge {{ getRiskBadgeClass($assessment['risk_level']) }}">{{ ucfirst($assessment['risk_level']) }}</span>
+                                            </td>
+                                            <td>{{ $assessment['risk_score'] }}</td>
+                                            <td>{{ $assessment['created_at']->format('d/m/Y') }}</td>
+                                            <td>
+                                                <a href="{{ route('risk-assessment.show', $assessment['id']) }}" class="btn btn-sm btn-primary">Ver</a>
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @else
+                                    <tr>
+                                        <td colspan="4" class="text-center">No hay evaluaciones recientes</td>
+                                    </tr>
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -532,6 +478,24 @@
     }
 </style>
 @endpush
+
+@php
+function getRiskBadgeClass($riskLevel) {
+    switch ($riskLevel) {
+        case 'bajo':
+            return 'bg-success';
+        case 'medio':
+            return 'bg-warning text-dark';
+        case 'alto':
+            return 'bg-danger';
+        case 'crítico':
+        case 'critico':
+            return 'bg-dark';
+        default:
+            return 'bg-secondary';
+    }
+}
+@endphp
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

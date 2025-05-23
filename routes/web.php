@@ -8,6 +8,8 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\Bloque1NuevoController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\RiskController;
+use App\Http\Controllers\RiskAssessmentController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,13 +51,21 @@ Route::prefix('salvavidasapp')->group(function () {
             Route::post('/conversation/{id}/send', [ChatController::class, 'sendMessage'])->name('chat.send-message');
         });
         
-        // Rutas para evaluación de riesgo
+        // Rutas para evaluación de riesgo general
         Route::prefix('risk')->group(function () {
             Route::get('/', [RiskController::class, 'index'])->name('risk.index');
             Route::get('/assessment/{id}', [RiskController::class, 'show'])->name('risk.show');
             Route::get('/create', [RiskController::class, 'create'])->name('risk.create');
             Route::get('/dashboard', [RiskController::class, 'dashboard'])->name('risk.dashboard');
             Route::get('/patient/{document}', [RiskController::class, 'patient'])->name('risk.patient');
+        });
+        
+        // Rutas para la gestión detallada de evaluaciones de riesgo
+        Route::prefix('risk-assessment')->group(function () {
+            Route::get('/', [RiskAssessmentController::class, 'index'])->name('risk-assessment.index');
+            Route::get('/{id}', [RiskAssessmentController::class, 'show'])->name('risk-assessment.show');
+            Route::put('/{id}/update-status', [RiskAssessmentController::class, 'updateStatus'])->name('risk-assessment.update-status');
+            Route::put('/{id}/mark-critical', [RiskAssessmentController::class, 'markAsCritical'])->name('risk-assessment.mark-critical');
         });
     });
 });
