@@ -350,7 +350,10 @@
                 <ul class="menu-item list-unstyled">
                     <li>
                         <a href="{{ route('risk-assessment.index') }}" class="menu-link {{ request()->routeIs('risk-assessment.*') ? 'active' : '' }}">
-                            <i class="menu-icon fas fa-exclamation-triangle"></i>
+                            <div class="position-relative">
+                                <i class="menu-icon fas fa-exclamation-triangle"></i>
+                                <x-risk-alert-counter />
+                            </div>
                             <span class="menu-text">Evaluaciones de Riesgo</span>
                         </a>
                     </li>

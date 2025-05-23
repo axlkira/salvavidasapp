@@ -63,6 +63,7 @@ Route::prefix('salvavidasapp')->group(function () {
         // Rutas para la gestión detallada de evaluaciones de riesgo
         Route::prefix('risk-assessment')->group(function () {
             Route::get('/', [RiskAssessmentController::class, 'index'])->name('risk-assessment.index');
+            Route::get('/alerts', [RiskAssessmentController::class, 'alerts'])->name('risk-assessment.alerts');
             Route::get('/{id}', [RiskAssessmentController::class, 'show'])->name('risk-assessment.show');
             Route::put('/{id}/update-status', [RiskAssessmentController::class, 'updateStatus'])->name('risk-assessment.update-status');
             Route::put('/{id}/mark-critical', [RiskAssessmentController::class, 'markAsCritical'])->name('risk-assessment.mark-critical');

@@ -15,6 +15,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // Ejecutar análisis automático de riesgo diariamente a las 8:00 AM
+        $schedule->command('risk:analyze --days=3')->dailyAt('08:00');
+        
         // $schedule->command('inspire')->hourly();
     }
 
