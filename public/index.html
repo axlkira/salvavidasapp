@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SalvaVidas - Prevención de Suicidio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header h1 i {
+            margin-right: 10px;
+            color: #3498db;
+        }
+        .content {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            flex-grow: 1;
+        }
+        .subtitle {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        .btn-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .btn {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn i {
+            margin-right: 10px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            margin-top: auto;
+        }
+        .server-info {
+            margin-top: 30px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-heart-pulse"></i> SalvaVidas</h1>
+    </div>
+    <div class="content">
+        <h2>Bienvenido a SalvaVidas</h2>
+        <p>Esta aplicación está diseñada para ayudar a profesionales de la salud mental en la evaluación y prevención del riesgo suicida mediante la inteligencia artificial.</p>
+        
+        <div class="info-box">
+            <p><strong>Nota:</strong> Esta es una versión de demostración. Utiliza los enlaces a continuación para navegar por las diferentes secciones de la aplicación.</p>
+        </div>
+        
+        <h3 class="subtitle">Acceder a la Aplicación</h3>
+        <p>Selecciona una de las siguientes opciones para navegar por la aplicación:</p>
+        
+        <div class="btn-container">
+            <a href="index.php" class="btn">
+                <i class="fas fa-home"></i> Inicio Laravel
+            </a>
+            <a href="index.php/demo" class="btn">
+                <i class="fas fa-tachometer-alt"></i> Dashboard Demo
+            </a>
+            <a href="index.php/salvavidasapp/dashboard" class="btn">
+                <i class="fas fa-chart-line"></i> Dashboard Completo
+            </a>
+            <a href="index.php/salvavidasapp/chat" class="btn">
+                <i class="fas fa-comments"></i> Chat con IA
+            </a>
+            <a href="index.php/salvavidasapp/risk" class="btn">
+                <i class="fas fa-clipboard-list"></i> Evaluación de Riesgo
+            </a>
+        </div>
+        
+        <h3 class="subtitle">Solución de Problemas</h3>
+        <p>Si experimentas errores al acceder a las rutas anteriores, prueba con las siguientes alternativas:</p>
+        
+        <div class="btn-container">
+            <a href="../public/index.php" class="btn">
+                <i class="fas fa-home"></i> Inicio (Alternativo)
+            </a>
+            <a href="../public/index.php/demo" class="btn">
+                <i class="fas fa-tachometer-alt"></i> Dashboard Demo (Alt)
+            </a>
+            <a href="demo.php" class="btn">
+                <i class="fas fa-info-circle"></i> Información del Servidor
+            </a>
+        </div>
+        
+        <h3 class="subtitle">Información Técnica</h3>
+        <p>SalvaVidas está construido con Laravel, Vue.js y utiliza servicios de IA para procesar datos clínicos y evaluar el riesgo de suicidio en pacientes.</p>
+        
+        <div class="server-info">
+            PHP Version: <?php echo PHP_VERSION; ?>
+
+            Document Root: <?php echo $_SERVER['DOCUMENT_ROOT']; ?>
+
+            Script Path: <?php echo $_SERVER['SCRIPT_FILENAME']; ?>
+        </div>
+    </div>
+    <div class="footer">
+        <p>&copy; 2025 SalvaVidas - Aplicación de Prevención de Suicidio</p>
+    </div>
+</body>
+</html>
