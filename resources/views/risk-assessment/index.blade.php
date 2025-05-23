@@ -10,68 +10,11 @@
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center">
                 <h2>Evaluaciones de Riesgo</h2>
-                <div>
-                    <a href="{{ route('dashboard') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
-                    </a>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Filtros</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('risk-assessment.index') }}" method="GET" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="risk_level" class="form-label">Nivel de Riesgo</label>
-                            <select name="risk_level" id="risk_level" class="form-select">
-                                <option value="all" {{ $filters['risk_level'] == 'all' ? 'selected' : '' }}>Todos</option>
-                                <option value="bajo" {{ $filters['risk_level'] == 'bajo' ? 'selected' : '' }}>Bajo</option>
-                                <option value="medio" {{ $filters['risk_level'] == 'medio' ? 'selected' : '' }}>Medio</option>
-                                <option value="alto" {{ $filters['risk_level'] == 'alto' ? 'selected' : '' }}>Alto</option>
-                                <option value="crítico" {{ $filters['risk_level'] == 'crítico' ? 'selected' : '' }}>Crítico</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label for="status" class="form-label">Estado</label>
-                            <select name="status" id="status" class="form-select">
-                                <option value="all" {{ $filters['status'] == 'all' ? 'selected' : '' }}>Todos</option>
-                                <option value="pending" {{ $filters['status'] == 'pending' ? 'selected' : '' }}>Pendiente</option>
-                                <option value="reviewed" {{ $filters['status'] == 'reviewed' ? 'selected' : '' }}>Revisado</option>
-                                <option value="archived" {{ $filters['status'] == 'archived' ? 'selected' : '' }}>Archivado</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label for="date_from" class="form-label">Fecha Desde</label>
-                            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ $filters['date_from'] }}">
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label for="date_to" class="form-label">Fecha Hasta</label>
-                            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ $filters['date_to'] }}">
-                        </div>
-                        
-                        <div class="col-md-12 text-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter"></i> Filtrar
-                            </button>
-                            <a href="{{ route('risk-assessment.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-sync"></i> Limpiar Filtros
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Tabla de evaluaciones de riesgo -->
     <div class="row">
