@@ -230,9 +230,9 @@
                                 <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#interventionModal">
                                     <i class="fas fa-file-medical"></i> Crear Guía de Intervención
                                 </button>
-                                <form action="{{ route('risk-assessment.mark-critical', $assessment->id) }}" method="POST" class="d-inline">
+                                <form action="{{ route('risk-assessment.update-status', $assessment->id) }}" method="POST" class="d-inline">
                                     @csrf
-                                    @method('PUT')
+                                    <input type="hidden" name="status" value="urgent">
                                     <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de marcar esta evaluación como crítica?')">
                                         <i class="fas fa-exclamation-circle"></i> Marcar como Crítico
                                     </button>

@@ -358,12 +358,6 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('risk.index') }}" class="menu-link {{ request()->routeIs('risk.index') ? 'active' : '' }}">
-                            <i class="menu-icon fas fa-clipboard-list"></i>
-                            <span class="menu-text">Evaluaciones</span>
-                        </a>
-                    </li>
-                    <li>
                         <a href="{{ route('risk.create') }}" class="menu-link {{ request()->routeIs('risk.create') ? 'active' : '' }}">
                             <i class="menu-icon fas fa-plus-circle"></i>
                             <span class="menu-text">Nueva Evaluación</span>
@@ -390,6 +384,41 @@
                             <i class="menu-icon fas fa-exclamation-triangle"></i>
                             <span class="menu-text">Alto Riesgo</span>
                             <span class="menu-badge">5</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="menu-category">Notificaciones</div>
+                <ul class="menu-item list-unstyled">
+                    <li>
+                        <a href="{{ route('notifications.index') }}" class="menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
+                            <div class="position-relative">
+                                <i class="menu-icon fas fa-bell"></i>
+                                <x-notification-counter />
+                            </div>
+                            <span class="menu-text">Centro de Notificaciones</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="menu-category">Analíticas</div>
+                <ul class="menu-item list-unstyled">
+                    <li>
+                        <a href="{{ route('analytics.index') }}" class="menu-link {{ request()->routeIs('analytics.*') ? 'active' : '' }}">
+                            <i class="menu-icon fas fa-chart-pie"></i>
+                            <span class="menu-text">Dashboard de Analíticas</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('analytics.risk-trends') }}" class="menu-link {{ request()->routeIs('analytics.risk-trends') ? 'active' : '' }}">
+                            <i class="menu-icon fas fa-chart-line"></i>
+                            <span class="menu-text">Tendencias de Riesgo</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('analytics.risk-factors') }}" class="menu-link {{ request()->routeIs('analytics.risk-factors') ? 'active' : '' }}">
+                            <i class="menu-icon fas fa-exclamation-circle"></i>
+                            <span class="menu-text">Factores de Riesgo</span>
                         </a>
                     </li>
                 </ul>

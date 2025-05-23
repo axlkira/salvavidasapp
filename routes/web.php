@@ -63,10 +63,27 @@ Route::prefix('salvavidasapp')->group(function () {
         // Rutas para la gestión detallada de evaluaciones de riesgo
         Route::prefix('risk-assessment')->group(function () {
             Route::get('/', [RiskAssessmentController::class, 'index'])->name('risk-assessment.index');
-            Route::get('/alerts', [RiskAssessmentController::class, 'alerts'])->name('risk-assessment.alerts');
             Route::get('/{id}', [RiskAssessmentController::class, 'show'])->name('risk-assessment.show');
-            Route::put('/{id}/update-status', [RiskAssessmentController::class, 'updateStatus'])->name('risk-assessment.update-status');
-            Route::put('/{id}/mark-critical', [RiskAssessmentController::class, 'markAsCritical'])->name('risk-assessment.mark-critical');
+            Route::post('/{id}/update-status', [RiskAssessmentController::class, 'updateStatus'])->name('risk-assessment.update-status');
+            Route::post('/analyze/{conversationId}', [RiskAssessmentController::class, 'analyze'])->name('risk-assessment.analyze');
+        });
+        
+        // Rutas para el sistema de notificaciones
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+            Route::get('/unread', [App\Http\Controllers\NotificationController::class, 'getUnread'])->name('notifications.unread');
+            Route::post('/{id}/mark-as-read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+            Route::post('/mark-all-as-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+            Route::get('/{id}', [App\Http\Controllers\NotificationController::class, 'show'])->name('notifications.show');
+        });
+        
+        // Rutas para el sistema de analíticas
+        Route::prefix('analytics')->group(function () {
+            Route::get('/', [App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
+            Route::get('/risk-trends', [App\Http\Controllers\AnalyticsController::class, 'riskTrends'])->name('analytics.risk-trends');
+            Route::get('/risk-factors', [App\Http\Controllers\AnalyticsController::class, 'riskFactors'])->name('analytics.risk-factors');
+            Route::get('/intervention-effectiveness', [App\Http\Controllers\AnalyticsController::class, 'interventionEffectiveness'])->name('analytics.intervention-effectiveness');
+            Route::get('/conversation-patterns', [App\Http\Controllers\AnalyticsController::class, 'conversationPatterns'])->name('analytics.conversation-patterns');
         });
     });
 });

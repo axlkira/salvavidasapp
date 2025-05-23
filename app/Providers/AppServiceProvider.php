@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Blade;
+use App\View\Components\RiskAlertCounter;
+use App\View\Components\NotificationCounter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Registrar componentes personalizados
+        Blade::component('risk-alert-counter', RiskAlertCounter::class);
+        Blade::component('notification-counter', NotificationCounter::class);
     }
 }

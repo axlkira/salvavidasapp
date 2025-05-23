@@ -185,21 +185,40 @@ class AIRiskAnalysisService
             $aiRiskLevel = 'crítico';
         }
         
+        // Analizar el contenido para determinar el nivel real de riesgo
+        $detectedLevel = $this->detectRiskLevelFromContent($aiResult);
+        
         // Obtenemos el puntaje de riesgo del análisis de IA (normalizado a nuestra escala)
         $aiRiskScore = isset($aiResult['risk_score']) ? ($aiResult['risk_score'] * 100) : 0;
+        
+        // Si el texto de análisis contiene frases como "nivel de riesgo bajo" o "riesgo moderado",
+        // deberíamos respetar esa evaluación y no forzar un nivel alto
+        if ($detectedLevel) {
+            $aiRiskLevel = $detectedLevel;
+            
+            // Ajustar el puntaje según el nivel detectado
+            if ($detectedLevel === 'bajo') {
+                $aiRiskScore = min($aiRiskScore, 33);
+            } elseif ($detectedLevel === 'medio') {
+                $aiRiskScore = min(max($aiRiskScore, 34), 66);
+            } elseif ($detectedLevel === 'alto' || $detectedLevel === 'crítico') {
+                $aiRiskScore = max($aiRiskScore, 67);
+            }
+        }
         
         // Calculamos un puntaje combinado (dando más peso al análisis de IA)
         $combinedScore = ($keywordAssessment->risk_score * 0.4) + ($aiRiskScore * 0.6);
         
-        // Asegurarnos de que el puntaje combinado sea al menos 75 para casos de alto riesgo
-        if ($aiRiskLevel === 'alto' || $aiRiskLevel === 'crítico') {
+        // Solo elevar automáticamente a 75 si realmente hay indicios claros de alto riesgo
+        $hasSuicidalContent = $this->detectSuicidalContentInResult($aiResult);
+        if (($aiRiskLevel === 'alto' || $aiRiskLevel === 'crítico') && $hasSuicidalContent) {
             $combinedScore = max($combinedScore, 75);
         }
         
         // Determinamos el nivel de riesgo final
-        // Seleccionamos el nivel más alto entre ambos análisis para mayor seguridad
+        // En lugar de siempre elegir el más alto, confiamos más en el resultado del análisis de IA
         $keywordRiskLevel = $keywordAssessment->risk_level;
-        $combinedRiskLevel = $this->getHigherRiskLevel($keywordRiskLevel, $aiRiskLevel);
+        $combinedRiskLevel = $detectedLevel ? $detectedLevel : $this->getHigherRiskLevel($keywordRiskLevel, $aiRiskLevel);
         
         // Actualizamos la evaluación con los valores combinados
         $keywordAssessment->risk_score = $combinedScore;
@@ -207,8 +226,8 @@ class AIRiskAnalysisService
         $keywordAssessment->provider = 'sistema+ia';
         $keywordAssessment->model = $aiResult['model'] ?? 'combined-analysis-v1';
         
-        // Actualizar estado a 'urgent' para casos de alto riesgo o críticos
-        if (in_array(strtolower($combinedRiskLevel), ['alto', 'crítico', 'critico'])) {
+        // Actualizar estado a 'urgent' solo para casos realmente de alto riesgo
+        if (in_array(strtolower($combinedRiskLevel), ['alto', 'crítico', 'critico']) && $hasSuicidalContent) {
             $keywordAssessment->status = 'urgent';
         }
         
@@ -242,6 +261,113 @@ class AIRiskAnalysisService
         } else {
             return $level2;
         }
+    }
+    
+    /**
+     * Detecta el nivel de riesgo basado en el contenido textual del análisis
+     * 
+     * @param array $aiResult Resultado del análisis con IA
+     * @return string|null Nivel de riesgo detectado o null si no se pudo detectar
+     */
+    protected function detectRiskLevelFromContent(array $aiResult)
+    {
+        // Si no hay texto de análisis, no podemos detectar el nivel
+        if (!isset($aiResult['analysis_text']) || empty($aiResult['analysis_text'])) {
+            return null;
+        }
+        
+        $analysisText = strtolower($aiResult['analysis_text']);
+        
+        // Patrones para niveles de riesgo bajos
+        $lowRiskPatterns = [
+            'riesgo bajo', 'nivel bajo', 'no presenta riesgo', 'nivel de riesgo bajo',
+            'no se detecta riesgo', 'sin riesgo', 'ausencia de riesgo', 'riesgo mínimo',
+            'no hay evidencia de riesgo', 'clasificación del riesgo: bajo'
+        ];
+        
+        // Patrones para niveles de riesgo medio
+        $mediumRiskPatterns = [
+            'riesgo moderado', 'nivel moderado', 'nivel de riesgo moderado', 'riesgo medio',
+            'nivel medio', 'nivel de riesgo medio', 'moderado riesgo', 'medio riesgo',
+            'clasificación del riesgo: medio', 'clasificación del riesgo: moderado'
+        ];
+        
+        // Patrones para niveles de riesgo alto
+        $highRiskPatterns = [
+            'riesgo alto', 'nivel alto', 'nivel de riesgo alto', 'alto riesgo',
+            'riesgo elevado', 'riesgo significativo', 'nivel elevado',
+            'clasificación del riesgo: alto', 'nivel de riesgo: alto'
+        ];
+        
+        // Patrones para niveles de riesgo crítico
+        $criticalRiskPatterns = [
+            'riesgo crítico', 'nivel crítico', 'nivel de riesgo crítico', 'crítico',
+            'emergencia', 'riesgo inminente', 'riesgo severo', 'riesgo extremo',
+            'clasificación del riesgo: crítico', 'nivel de riesgo: crítico'
+        ];
+        
+        // Verificar cada patrón en el texto
+        foreach ($lowRiskPatterns as $pattern) {
+            if (strpos($analysisText, $pattern) !== false) {
+                return 'bajo';
+            }
+        }
+        
+        foreach ($mediumRiskPatterns as $pattern) {
+            if (strpos($analysisText, $pattern) !== false) {
+                return 'medio';
+            }
+        }
+        
+        foreach ($highRiskPatterns as $pattern) {
+            if (strpos($analysisText, $pattern) !== false) {
+                return 'alto';
+            }
+        }
+        
+        foreach ($criticalRiskPatterns as $pattern) {
+            if (strpos($analysisText, $pattern) !== false) {
+                return 'crítico';
+            }
+        }
+        
+        // Si no se encuentra ninguno de los patrones, no podemos determinar el nivel
+        return null;
+    }
+    
+    /**
+     * Detecta si hay contenido suicida en el resultado del análisis
+     * 
+     * @param array $aiResult Resultado del análisis con IA
+     * @return bool True si se detecta contenido suicida
+     */
+    protected function detectSuicidalContentInResult(array $aiResult)
+    {
+        // Si no hay texto de análisis, no podemos detectar contenido suicida
+        if (!isset($aiResult['analysis_text']) || empty($aiResult['analysis_text'])) {
+            return false;
+        }
+        
+        $analysisText = strtolower($aiResult['analysis_text']);
+        
+        // Patrones de contenido suicida
+        $suicidalPatterns = [
+            'ideación suicida', 'pensamientos suicidas', 'intento de suicidio',
+            'plan suicida', 'riesgo de suicidio', 'conducta suicida',
+            'amenaza de suicidio', 'deseos de morir', 'quiere morir',
+            'no quiere vivir', 'acabar con su vida', 'quitarse la vida',
+            'matarse', 'suicidarse', 'autolesiones graves'
+        ];
+        
+        // Verificar cada patrón en el texto
+        foreach ($suicidalPatterns as $pattern) {
+            if (strpos($analysisText, $pattern) !== false) {
+                return true;
+            }
+        }
+        
+        // Si no se encuentra ninguno de los patrones de suicidio
+        return false;
     }
     
     /**
@@ -288,18 +414,6 @@ class AIRiskAnalysisService
     }
     
     /**
-     * Determina si un caso es crítico basado en la evaluación de riesgo
-     * 
-     * @param RiskAssessment $assessment Evaluación de riesgo
-     * @return bool True si es un caso crítico
-     */
-    protected function isCriticalCase(RiskAssessment $assessment)
-    {
-        // Consideramos críticos los casos de riesgo alto y crítico
-        return in_array(strtolower($assessment->risk_level), ['alto', 'crítico', 'critico']);
-    }
-    
-    /**
      * Genera alertas para casos críticos
      * 
      * @param RiskAssessment $assessment Evaluación de riesgo
@@ -316,6 +430,17 @@ class AIRiskAnalysisService
             'assessment_id' => $assessment->id,
             'date' => now()->format('Y-m-d H:i:s')
         ]);
+        
+        // Crear notificación en el sistema si existe el servicio
+        try {
+            if (class_exists('\App\Services\NotificationService')) {
+                $notificationService = app('\App\Services\NotificationService');
+                $notificationService->createHighRiskNotification($assessment);
+                Log::info('Notificación de riesgo alto creada exitosamente');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al crear notificación: ' . $e->getMessage());
+        }
         
         // Actualizar el estado de la evaluación para marcarla como crítica
         $assessment->status = 'urgent';
