@@ -19,7 +19,7 @@
                 <div class="card-body">
                     @if(count($conversations) > 0)
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover" id="conversationsTable">
                                 <thead>
                                     <tr>
                                         <th>Título</th>
@@ -119,5 +119,19 @@
             myModal.show();
         });
     @endif
+
+    // Inicializar DataTables
+    $(document).ready(function() {
+        $('#conversationsTable').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            },
+            order: [[3, 'desc']], // Ordenar por última actualización (columna 3) descendente
+            columnDefs: [
+                { orderable: false, targets: 4 } // No permitir ordenar por la columna de acciones
+            ]
+        });
+    });
 </script>
 @endpush

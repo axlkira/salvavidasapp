@@ -83,7 +83,7 @@
                 <div class="card-body">
                     @if(count($assessments) > 0)
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-striped table-hover" id="assessmentsTable">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
@@ -145,8 +145,8 @@
                             </table>
                         </div>
                         
-                        <!-- Paginación -->
-                        <div class="d-flex justify-content-center mt-4">
+                        <!-- Paginación manejada por DataTables, podemos ocultar la de Laravel -->
+                        <div class="d-none">
                             {{ $assessments->appends(request()->query())->links() }}
                         </div>
                     @else
@@ -164,7 +164,19 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar datepickers si es necesario
+        // Inicializar DataTables
+        $('#assessmentsTable').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            },
+            order: [[6, 'desc']], // Ordenar por fecha (columna 6) descendente
+            columnDefs: [
+                { orderable: false, targets: 7 } // No permitir ordenar por la columna de acciones
+            ],
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
+        });
     });
 </script>
 @endpush

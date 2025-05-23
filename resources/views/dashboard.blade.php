@@ -160,7 +160,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0" id="latestAssessmentsTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>Paciente</th>
@@ -552,6 +552,21 @@ function getRiskBadgeClass($riskLevel) {
                     }
                 }
             }
+        });
+
+        // Inicializar DataTables para las últimas evaluaciones
+        $('#latestAssessmentsTable').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            },
+            paging: false,
+            searching: false,
+            info: false,
+            order: [[1, 'desc']], // Ordenar por fecha descendente
+            columnDefs: [
+                { orderable: false, targets: 5 } // No permitir ordenar por la columna de acciones
+            ]
         });
     });
 </script>
