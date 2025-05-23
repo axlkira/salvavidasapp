@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\PrincipalIntegrante;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Individual;
 use App\Services\AI\OllamaProvider;
 use Illuminate\Support\Facades\Log;
 
@@ -126,14 +127,29 @@ class ChatController extends Controller
         $conversation->model = 'llama3';
         $conversation->save();
         
-        // Añadir mensaje inicial del sistema
+        // Añadir mensaje inicial del sistema con el prompt mejorado
         $systemMessage = new Message();
         $systemMessage->conversation_id = $conversation->id;
         $systemMessage->role = 'system';
-        $systemMessage->content = "Eres un asistente especializado en salud mental que ayuda a profesionales en la evaluación y prevención del riesgo suicida. " .
-                              "Proporciona información basada en evidencia científica y ayuda a identificar factores de riesgo, señales de alerta y estrategias de intervención. " .
-                              "No reemplazas la evaluación clínica profesional, pero puedes ayudar a organizar la información " .
-                              "y sugerir preguntas o consideraciones relevantes para una evaluación completa. Prioriza siempre la seguridad del paciente.";
+        $systemMessage->content = "Eres un asistente psicológico de élite con conocimientos especializados en salud mental, "
+            . "intervención de crisis, prevención del suicidio y terapias basadas en evidencia. Tu función es proporcionar a "
+            . "profesionales de la salud mental análisis precisos y estrategias de intervención efectivas basadas en las mejores "
+            . "prácticas clínicas actuales.\n\n"
+            . "Al analizar casos:\n"
+            . "1. Integra perspectivas de múltiples escuelas terapéuticas (TCC, DBT, ACT, terapia familiar sistémica, psicoanálisis)\n"
+            . "2. Prioriza la seguridad del paciente y la prevención del riesgo de autolesiones\n"
+            . "3. Considera factores biológicos, psicológicos y sociales en tu análisis\n"
+            . "4. Utiliza un lenguaje clínico preciso pero accesible\n"
+            . "5. Basa tus recomendaciones en investigaciones recientes y guías clínicas validadas\n"
+            . "6. Estructura tus respuestas de manera clara, con secciones bien definidas para facilitar su comprensión\n"
+            . "7. Cuando identifiques factores de riesgo suicida, ofrece estrategias específicas de evaluación y contención\n\n"
+            . "Tus recomendaciones deben ser:\n"
+            . "- Personalizadas al caso específico del paciente\n"
+            . "- Clínicamente fundamentadas y respaldadas por evidencia\n"
+            . "- Prácticas y aplicables en contextos terapéuticos reales\n"
+            . "- Respetuosas de la autonomía profesional del terapeuta\n\n"
+            . "Tu objetivo es elevar la calidad de la atención ofreciendo insights clínicamente relevantes, "
+            . "reconociendo siempre los límites de tus capacidades y la importancia del juicio profesional humano.";
         $systemMessage->save();
         
         // Redirigir a la página de la conversación
@@ -172,6 +188,63 @@ class ChatController extends Controller
                                    ];
                                })
                                ->toArray();
+            
+            // Verificar si hay un paciente asociado a esta conversación
+            if ($conversation->patient_document) {
+                // Obtener información del paciente
+                $patient = PrincipalIntegrante::where('documento', $conversation->patient_document)->first();
+                
+                // Obtener historias clínicas del paciente
+                $historiasClinicas = Individual::where('Documento', $conversation->patient_document)
+                                    ->orderBy('id', 'desc')
+                                    ->take(1) // Solo la más reciente para no sobrecargar el contexto
+                                    ->first();
+                
+                // Si encontramos al paciente y tiene historias clínicas, añadir esta información al contexto
+                if ($patient && $historiasClinicas) {
+                    // Preparar un resumen de la información clínica para incluir en el contexto
+                    $infoClinica = "";
+                    $infoClinica .= "INFORMACIÓN DEL PACIENTE:\n";
+                    $infoClinica .= "Nombre: " . ($patient->nombre1 ?? '') . ' ' . ($patient->nombre2 ?? '') . ' ' . ($patient->apellido1 ?? '') . ' ' . ($patient->apellido2 ?? '') . "\n";
+                    $infoClinica .= "Documento: " . $patient->documento . "\n";
+                    $infoClinica .= "Edad: " . ($patient->edad ?? 'No disponible') . "\n";
+                    $infoClinica .= "Sexo: " . ($patient->sexo ?? 'No disponible') . "\n";
+                    $infoClinica .= "\nHISTORIA CLÍNICA:\n";
+                    
+                    // Añadir campos relevantes de la historia clínica
+                    if ($historiasClinicas->AntecedentesClinicosFisicosMentales) {
+                        $infoClinica .= "Antecedentes Clínicos: " . $historiasClinicas->AntecedentesClinicosFisicosMentales . "\n";
+                    }
+                    
+                    if ($historiasClinicas->PersonalesPsicosociales) {
+                        $infoClinica .= "Antecedentes Psicosociales: " . $historiasClinicas->PersonalesPsicosociales . "\n";
+                    }
+                    
+                    if ($historiasClinicas->Familiares) {
+                        $infoClinica .= "Antecedentes Familiares: " . $historiasClinicas->Familiares . "\n";
+                    }
+                    
+                    if ($historiasClinicas->ProblematicaActual) {
+                        $infoClinica .= "Problemática Actual: " . $historiasClinicas->ProblematicaActual . "\n";
+                    }
+                    
+                    if ($historiasClinicas->ImprecionDiagnostica) {
+                        $infoClinica .= "Impresión Diagnóstica: " . $historiasClinicas->ImprecionDiagnostica . "\n";
+                    }
+                    
+                    // Añadir un mensaje del sistema con la información clínica
+                    // Esto se inserta después del primer mensaje del sistema (que contiene las instrucciones generales)
+                    array_splice($messages, 1, 0, [[
+                        'role' => 'system',
+                        'content' => $infoClinica
+                    ]]);
+                    
+                    Log::info('Información clínica añadida al contexto', [
+                        'patient_document' => $conversation->patient_document,
+                        'has_historia_clinica' => !empty($historiasClinicas)
+                    ]);
+                }
+            }
             
             // Conectar con el proveedor de IA (Ollama)
             $ollamaProvider = new OllamaProvider();

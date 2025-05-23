@@ -46,7 +46,7 @@
                             </div>
                             <strong>Nombre</strong>
                         </div>
-                        <p>{{ $patient->nombre }} {{ $patient->apellidos }}</p>
+                        <p>{{ $patient->nombre1 ?? '' }} {{ $patient->nombre2 ?? '' }} {{ $patient->apellido1 ?? '' }} {{ $patient->apellido2 ?? '' }}</p>
                     </div>
                     
                     <div class="mb-3">
@@ -58,6 +58,51 @@
                         </div>
                         <p>{{ $patient->documento }}</p>
                     </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="bg-info rounded-circle p-2 mr-2 text-white">
+                                <i class="fas fa-birthday-cake"></i>
+                            </div>
+                            <strong>Edad</strong>
+                        </div>
+                        <p>{{ $patient->edad ?? 'No disponible' }}</p>
+                    </div>
+                    
+                    @if(isset($historiasClinicas) && $historiasClinicas && $historiasClinicas->count() > 0)
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Histórico Clínico</h6>
+                    <div class="accordion" id="historiaAccordion">
+                        @foreach($historiasClinicas as $index => $historia)
+                        <div class="accordion-item mb-2 border rounded">
+                            <h2 class="accordion-header" id="heading{{ $index }}">
+                                <button class="accordion-button collapsed p-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $index }}" aria-expanded="false" aria-controls="collapse{{ $index }}">
+                                    <small>{{ $historia->FechaInicio ?? 'Fecha no disponible' }}</small>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ $index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ $index }}" data-bs-parent="#historiaAccordion">
+                                <div class="accordion-body p-2">
+                                    <div class="small-text">
+                                        @if($historia->ProblematicaActual)
+                                        <div class="mb-2">
+                                            <strong>Problemática:</strong>
+                                            <p class="text-muted small mb-1">{{ Str::limit($historia->ProblematicaActual, 150) }}</p>
+                                        </div>
+                                        @endif
+                                        
+                                        @if($historia->ImprecionDiagnostica)
+                                        <div class="mb-2">
+                                            <strong>Impresión Diagnóstica:</strong>
+                                            <p class="text-muted small mb-1">{{ Str::limit($historia->ImprecionDiagnostica, 150) }}</p>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+                    
                     @else
                     <div class="alert alert-info mt-4">
                         <i class="fas fa-info-circle"></i> Esta conversación no está asociada a un paciente específico.
@@ -97,7 +142,11 @@
                                         </span>
                                     </div>
                                     <div class="message-content">
-                                        {!! nl2br(e($message->content)) !!}
+                                        @if($message->role == 'assistant')
+                                            {!! preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', nl2br(e($message->content))) !!}
+                                        @else
+                                            {!! nl2br(e($message->content)) !!}
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -361,7 +410,7 @@
                             <span class="message-sender">${senderName}</span>
                             <span class="message-time">${timeString}</span>
                         </div>
-                        <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
+                        <div class="message-content">${role === 'assistant' ? content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') : content.replace(/\n/g, '<br>')}</div>
                     </div>
                 </div>
             `;
