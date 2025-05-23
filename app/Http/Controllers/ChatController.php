@@ -132,25 +132,25 @@ class ChatController extends Controller
         $systemMessage = new Message();
         $systemMessage->conversation_id = $conversation->id;
         $systemMessage->role = 'system';
-        $systemMessage->content = "Eres un asistente psicológico de élite con conocimientos especializados en salud mental, "
-            . "intervención de crisis, prevención del suicidio y terapias basadas en evidencia. Tu función es proporcionar a "
-            . "profesionales de la salud mental análisis precisos y estrategias de intervención efectivas basadas en las mejores "
-            . "prácticas clínicas actuales.\n\n"
-            . "Al analizar casos:\n"
-            . "1. Integra perspectivas de múltiples escuelas terapéuticas (TCC, DBT, ACT, terapia familiar sistémica, psicoanálisis)\n"
-            . "2. Prioriza la seguridad del paciente y la prevención del riesgo de autolesiones\n"
-            . "3. Considera factores biológicos, psicológicos y sociales en tu análisis\n"
-            . "4. Utiliza un lenguaje clínico preciso pero accesible\n"
-            . "5. Basa tus recomendaciones en investigaciones recientes y guías clínicas validadas\n"
-            . "6. Estructura tus respuestas de manera clara, con secciones bien definidas para facilitar su comprensión\n"
-            . "7. Cuando identifiques factores de riesgo suicida, ofrece estrategias específicas de evaluación y contención\n\n"
-            . "Tus recomendaciones deben ser:\n"
-            . "- Personalizadas al caso específico del paciente\n"
-            . "- Clínicamente fundamentadas y respaldadas por evidencia\n"
-            . "- Prácticas y aplicables en contextos terapéuticos reales\n"
-            . "- Respetuosas de la autonomía profesional del terapeuta\n\n"
-            . "Tu objetivo es elevar la calidad de la atención ofreciendo insights clínicamente relevantes, "
-            . "reconociendo siempre los límites de tus capacidades y la importancia del juicio profesional humano.";
+        $systemMessage->content = "Eres un asistente psicológico de élite con conocimientos especializados en salud mental, particularmente en la evaluación y gestión del riesgo suicida. Tu función es ayudar a profesionales de la salud mental a analizar casos y proporcionar orientación basada en evidencia científica.
+
+Sigue estas directrices al responder:
+
+1. Adopta un tono profesional, empático y educativo.
+2. Estructura tus respuestas de manera clara con encabezados y listas cuando sea apropiado.
+3. Basa tus respuestas en prácticas clínicas actuales y evidencia científica.
+4. Considera factores biopsicosociales y culturales en tus análisis.
+5. Proporciona orientación práctica que pueda ser implementada por profesionales de la salud mental.
+6. Reconoce los límites de tu conocimiento y recomienda consultar con especialistas cuando sea necesario.
+7. Enfatiza la importancia de la seguridad del paciente y las prácticas éticas.
+8. Respeta la confidencialidad y privacidad del paciente.
+9. Evita hacer diagnósticos definitivos, pero puedes discutir posibles diagnósticos diferenciales.
+10. Prioriza la intervención en crisis cuando se identifique riesgo suicida agudo.
+11. IMPORTANTE: NO utilices emojis o caracteres especiales en tus respuestas bajo ninguna circunstancia.
+12. Usa exclusivamente texto plano y formato Markdown básico (negritas, listas) para tus respuestas.
+13. Tus recomendaciones deben ser prácticas y aplicables en contextos terapéuticos reales.
+14. Respeta la autonomía profesional del terapeuta.
+15. Tu objetivo es elevar la calidad de la atención ofreciendo insights clínicamente relevantes, reconociendo siempre los límites de tus capacidades y la importancia del juicio profesional humano.";
         $systemMessage->save();
         
         // Redirigir a la página de la conversación
@@ -281,10 +281,13 @@ class ChatController extends Controller
             
             // Guardar la respuesta de la IA
             if ($result['success']) {
+                // Sanitizar el contenido antes de guardarlo
+                $sanitizedContent = $this->sanitizeContent($result['content']);
+                
                 $aiMessage = new Message();
                 $aiMessage->conversation_id = $conversationId;
                 $aiMessage->role = 'assistant';
-                $aiMessage->content = $result['content'];
+                $aiMessage->content = $sanitizedContent;
                 $aiMessage->save();
                 
                 // Actualizar la fecha de última modificación de la conversación
@@ -317,5 +320,42 @@ class ChatController extends Controller
                 'error' => 'Error al procesar tu mensaje: ' . $e->getMessage()
             ], 500);
         }
+    }
+    
+    /**
+     * Sanitiza el contenido para evitar problemas de codificación/colación
+     *
+     * @param string $content Contenido a sanitizar
+     * @return string Contenido sanitizado
+     */
+    private function sanitizeContent($content)
+    {
+        // Convertir caracteres especiales a entidades HTML
+        $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+        
+        // Eliminar caracteres invisibles problemáticos
+        $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
+        
+        // Eliminar pensamientos internos del modelo (texto en inglés antes de la respuesta en español)
+        if (preg_match('/^Okay,\s+the\s+user.+?(?=\n\n|\. \n|[A-ZÁ-Ú][a-zá-ú])/s', $content, $matches)) {
+            $content = trim(substr($content, strlen($matches[0])));
+        }
+        
+        // Eliminar símbolos de estructura interna como ####
+        $content = preg_replace('/(^|\n)\s*#{2,}\s*/', '$1', $content);
+        
+        // Eliminar separadores largos como ---
+        $content = preg_replace('/---+/', '', $content);
+        
+        // Eliminar asteriscos redundantes
+        $content = preg_replace('/\*{3,}/', '**', $content);
+        
+        // Limpiar espacios múltiples innecesarios
+        $content = preg_replace('/\n\s*\n\s*\n/', "\n\n", $content);
+        
+        // Eliminar solamente emojis y otros caracteres problemáticos, pero preservar acentos y ñ
+        $content = preg_replace('/[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $content);
+        
+        return $content;
     }
 }
