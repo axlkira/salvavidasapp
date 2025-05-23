@@ -8,6 +8,7 @@ use App\Models\PrincipalIntegrante;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Individual;
+use App\Models\UsuarioProtocolo;
 use App\Services\AI\OllamaProvider;
 use Illuminate\Support\Facades\Log;
 
@@ -204,18 +205,46 @@ class ChatController extends Controller
                 if ($patient && $historiasClinicas) {
                     // Preparar un resumen de la información clínica para incluir en el contexto
                     $infoClinica = "";
-                    $infoClinica .= "INFORMACIÓN DEL PACIENTE:\n";
-                    $infoClinica .= "Nombre: " . ($patient->nombre1 ?? '') . ' ' . ($patient->nombre2 ?? '') . ' ' . ($patient->apellido1 ?? '') . ' ' . ($patient->apellido2 ?? '') . "\n";
+                    // Usar el query completo para obtener información detallada del paciente y profesional
+                    $historiasCompletas = \DB::select("select *, CONCAT_WS(' ',tp.nombre1,tp.nombre2,tp.apellido1,tp.apellido2) as Nombre_Usuario, 
+                                            CONCAT_WS(' ',tu.nombre1,tu.nombre2,tu.apellido1,tu.apellido2) as Nombre_profesional 
+                                            from familiam_buenvivir.t_individual i
+                                            left join familiam_bdprotocoloservidor.t_usuarioprotocolo tu on i.Profesional = tu.documento 
+                                            left join familiam_modulo_cif.t1_principalintegrantes tp on i.Documento = tp.documento
+                                            where i.Documento = ?
+                                            order by i.FechaInicio desc", [$patient->documento]);
+
+                    $infoClinica = "INFORMACIÓN DEL PACIENTE:\n";
+                    $infoClinica .= "Nombre: " . ($patient->nombre1 . ' ' . $patient->nombre2 . ' ' . $patient->apellido1 . ' ' . $patient->apellido2) . "\n";
                     $infoClinica .= "Documento: " . $patient->documento . "\n";
                     $infoClinica .= "Edad: " . ($patient->edad ?? 'No disponible') . "\n";
                     $infoClinica .= "Sexo: " . ($patient->sexo ?? 'No disponible') . "\n";
-                    $infoClinica .= "\nHISTORIA CLÍNICA:\n";
                     
-                    // Añadir campos relevantes de la historia clínica
-                    if ($historiasClinicas->AntecedentesClinicosFisicosMentales) {
-                        $infoClinica .= "Antecedentes Clínicos: " . $historiasClinicas->AntecedentesClinicosFisicosMentales . "\n";
+                    // Agregar información de profesionales si está disponible
+                    if (!empty($historiasCompletas)) {
+                        if (isset($historiasCompletas[0]->Nombre_profesional)) {
+                            $infoClinica .= "\nPROFESIONALES TRATANTES:\n";
+                            $infoClinica .= "Último profesional: " . $historiasCompletas[0]->Nombre_profesional . " (" . date('d/m/Y', strtotime($historiasCompletas[0]->FechaInicio)) . ")\n";
+                            
+                            // Mostrar historial de profesionales (máximo 3 profesionales diferentes)
+                            $profesionalesUnicos = [];
+                            foreach ($historiasCompletas as $index => $historia) {
+                                if ($index === 0) continue; // Saltamos el primero que ya lo mostramos
+                                if (!empty($historia->Nombre_profesional) && !in_array($historia->Nombre_profesional, $profesionalesUnicos)) {
+                                    $profesionalesUnicos[] = $historia->Nombre_profesional;
+                                    $infoClinica .= "Profesional previo: " . $historia->Nombre_profesional . " (" . date('d/m/Y', strtotime($historia->FechaInicio)) . ")\n";
+                                    if (count($profesionalesUnicos) >= 2) break; // Limitamos a 2 profesionales previos
+                                }
+                            }
+                        }
                     }
                     
+                    $infoClinica .= "\nHISTORIA CLÍNICA:\n";
+                        
+                        // Añadir campos relevantes de la historia clínica
+                        if ($historiasClinicas->AntecedentesClinicosFisicosMentales) {
+                            $infoClinica .= "Antecedentes Clínicos: " . $historiasClinicas->AntecedentesClinicosFisicosMentales . "\n";
+                        }
                     if ($historiasClinicas->PersonalesPsicosociales) {
                         $infoClinica .= "Antecedentes Psicosociales: " . $historiasClinicas->PersonalesPsicosociales . "\n";
                     }

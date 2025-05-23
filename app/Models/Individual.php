@@ -164,4 +164,22 @@ class Individual extends Model
             'motivoconsulta' => $this->motivoconsulta,
         ];
     }
+    
+    /**
+     * Obtener historias clínicas con información completa de paciente y profesional
+     * 
+     * @param string $documentoPaciente Documento del paciente
+     * @return \Illuminate\Support\Collection
+     */
+    public static function getHistoriasCompletasByPaciente($documentoPaciente)
+    {
+        // Usar el query proporcionado para obtener información completa
+        return \DB::select("select  *, CONCAT_WS(' ',tp.nombre1,tp.nombre2,tp.apellido1,tp.apellido2) as Nombre_Usuario , 
+                CONCAT_WS(' ',tu.nombre1,tu.nombre2,tu.apellido1,tu.apellido2) as Nombre_profesional 
+                from familiam_buenvivir.t_individual i
+                left join familiam_bdprotocoloservidor.t_usuarioprotocolo tu on i.Profesional = tu.documento 
+                left join familiam_modulo_cif.t1_principalintegrantes tp on i.Documento = tp.documento
+                where i.Documento = ?
+                order by i.FechaInicio desc", [$documentoPaciente]);
+    }
 }
