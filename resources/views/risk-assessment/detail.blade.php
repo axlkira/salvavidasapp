@@ -278,6 +278,16 @@
                     <hr>
                 </div>
                 
+                <!-- Pie de página visible solo al imprimir -->
+                <div class="print-footer" style="display: none;">
+                    <div class="print-footer-left">
+                        SalvaVidas - Guía de Intervención
+                    </div>
+                    <div class="print-footer-right">
+                        Página <span class="page-number"></span> | {{ now()->format('d/m/Y') }}
+                    </div>
+                </div>
+                
                 <div class="accordion" id="interventionAccordion">
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="heading1">
@@ -467,107 +477,220 @@
             border: 1px solid #dee2e6;
         }
     }
-    /* Estilos para impresión */
+    /* Estilos para impresión - Diseño profesional */
     @media print {
+        @page {
+            size: A4;
+            margin: 0.5cm 1cm 1.5cm 1cm; /* Aumentado el margen inferior para el pie de página */
+        }
+        
         body * {
             visibility: hidden;
         }
+        
+        /* Mostrar solo el modal y sus contenidos */
         #interventionModal, #interventionModal * {
             visibility: visible;
         }
+        
         #interventionModal {
             position: absolute;
-            left: 0;
+            left: 50%;
             top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: visible;
+            transform: translateX(-50%);
+            width: 21cm; /* Ancho estándar de A4 */
+            max-width: 90%;
+            height: auto; /* Altura automática para no cortar contenido */
             background-color: white;
             box-shadow: none;
             border: none;
-            margin: 0;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 0;
             font-family: 'Arial', sans-serif;
+            color: #333;
         }
+        
+        /* Ajustes para el diálogo modal */
         .modal-dialog {
             width: 100%;
             max-width: 100%;
             margin: 0;
             padding: 0;
         }
+        
         .modal-content {
             border: none;
             box-shadow: none;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 50px; /* Espacio para el pie de página */
         }
-        .modal-header {
-            background-color: #fff !important;
-            color: #000 !important;
-            border-bottom: 2px solid #28a745;
-            padding: 15px 0;
-            margin-bottom: 20px;
-        }
-        .modal-header h5 {
-            font-size: 24px;
-            font-weight: bold;
-            color: #28a745 !important;
-        }
-        .accordion-button {
-            background: none !important;
-            color: #28a745 !important;
-            font-weight: bold;
-            font-size: 18px;
-            padding-left: 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .accordion-button::after {
-            display: none;
-        }
-        .accordion-body {
-            padding: 15px 0;
-        }
-        .list-group-item {
-            border: none;
-            border-bottom: 1px solid #f0f0f0;
-            padding: 10px 0;
-        }
-        .btn-close, .modal-footer {
+        
+        /* Ocultar elementos no necesarios para impresión */
+        .modal-footer, .btn-close, .modal-header {
             display: none !important;
         }
-        /* Añadir pie de página para impresión */
-        .modal-content::after {
-            content: "SalvaVidas - Guía de Intervención - " attr(data-date);
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            padding: 10px;
-            width: 100%;
-            text-align: center;
-            font-size: 10px;
-            color: #777;
-            border-top: 1px solid #ddd;
-        }
-        /* Logotipo para impresión */
+        
+        /* Cabecera con color institucional */
         .print-header {
             display: flex !important;
             align-items: center;
+            background-color: #0C6EFD; /* Azul institucional */
+            color: white;
+            padding: 15px 20px;
             margin-bottom: 20px;
-            border-bottom: 2px solid #28a745;
-            padding-bottom: 10px;
+            border-radius: 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        
         .print-logo {
             display: block !important;
-            height: 40px;
+            height: 50px;
             margin-right: 20px;
+            filter: brightness(0) invert(1); /* Logo blanco */
         }
+        
         .print-title {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: bold;
-            color: #28a745;
+            color: #000;
             margin: 0;
+            letter-spacing: 0.5px;
         }
-        /* Ocultar acordeones colapsados */
+        
+        /* Datos del paciente con diseño mejorado */
+        .print-info {
+            display: block !important;
+            background-color: #f9f9f9;
+            border-left: 4px solid #000; /* Negro */
+            padding: 15px 20px;
+            margin: 0 0 25px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .print-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .print-info strong {
+            color: #000; /* Negro */
+        }
+        
+        /* Títulos de secciones */
+        .accordion-button {
+            background: none !important;
+            color: #000 !important; /* Negro */
+            font-weight: bold;
+            font-size: 18px;
+            padding: 15px 0 10px 0;
+            margin-bottom: 5px;
+            border-bottom: 2px solid #000;
+        }
+        
+        .accordion-button::after {
+            display: none;
+        }
+        
+        /* Contenido de acordeones */
         .accordion-collapse {
             display: block !important;
+        }
+        
+        .accordion-body {
+            padding: 15px 0 25px 0;
+            page-break-inside: avoid;
+        }
+        
+        /* Elementos de lista mejorados */
+        .list-group {
+            margin-bottom: 20px;
+        }
+        
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 10px 5px;
+            position: relative;
+            margin-left: 15px;
+        }
+        
+        .list-group-item::before {
+            content: '\2022'; /* Bullet point */
+            color: #000;
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+        
+        /* Marcadores para niveles de riesgo */
+        .list-group-item.list-group-item-danger {
+            background-color: #ffebee;
+            color: #c62828;
+            font-weight: bold;
+            border-radius: 4px;
+            border-left: 4px solid #c62828;
+            padding-left: 10px;
+        }
+        
+        .list-group-item.list-group-item-danger::before {
+            content: '\26A0'; /* Símbolo de advertencia */
+            color: #c62828;
+        }
+        
+        /* Estilo para badges */
+        .badge.bg-danger {
+            background-color: #c62828 !important;
+            padding: 5px 8px;
+        }
+        
+        /* Encabezados de secciones */
+        h6 {
+            color: #000;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 8px;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        /* Pie de página */
+        .print-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex !important;
+            justify-content: space-between;
+            padding: 10px 20px;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            background-color: white;
+        }
+        
+        .print-footer-left {
+            text-align: left;
+        }
+        
+        .print-footer-right {
+            text-align: right;
+        }
+        
+        .print-footer img {
+            height: 20px;
+            vertical-align: middle;
+        }
+        
+        /* Ajustes para evitar cortes en páginas */
+        .accordion-item {
+            page-break-inside: avoid;
+        }
+        
+        /* Asegurar que las imágenes no se deformen */
+        img {
+            max-width: 100% !important;
+            height: auto !important;
         }
     }
 </style>
@@ -579,6 +702,7 @@
         // Mostrar elementos ocultos para impresión
         document.querySelector('.print-header').style.display = 'flex';
         document.querySelector('.print-info').style.display = 'block';
+        document.querySelector('.print-footer').style.display = 'flex';
         
         // Abrir todos los acordeones para la impresión
         const accordionItems = document.querySelectorAll('.accordion-collapse');
@@ -586,27 +710,85 @@
             item.classList.add('show');
         });
         
-        // Aplicar clases especiales para impresión
-        document.querySelector('.modal-header').classList.add('print-friendly');
+        // Resolver problema común de Bootstrap donde los acordeones pueden tener altura 0
+        document.querySelectorAll('.accordion-body').forEach(body => {
+            body.style.display = 'block';
+            body.style.height = 'auto';
+            body.style.overflow = 'visible';
+        });
+        
+        // Preparar modal para impresión
+        const modalDialog = document.querySelector('.modal-dialog');
+        const modalContent = document.querySelector('.modal-content');
+        
+        modalDialog.style.maxWidth = '100%';
+        modalDialog.style.width = '100%';
+        modalDialog.style.margin = '0';
+        modalContent.style.border = 'none';
+        
+        // Asegurar que todos los elementos de la lista tengan viñetas
+        document.querySelectorAll('.list-group-item').forEach(item => {
+            if (!item.classList.contains('list-group-item-action')) {
+                item.style.marginLeft = '15px';
+                item.style.position = 'relative';
+            }
+        });
         
         // Esperar a que se apliquen los cambios
         setTimeout(() => {
+            // Agregar numeración de páginas mediante CSS counters para impresión
+            const style = document.createElement('style');
+            style.id = 'print-page-numbers';
+            style.innerHTML = `
+                @media print {
+                    .print-footer .page-number:after {
+                        content: counter(page);
+                    }
+                    @page {
+                        counter-increment: page;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
             window.print();
             
             // Restaurar el estado original después de imprimir
             setTimeout(() => {
+                // Eliminar estilos temporales
+                const tempStyle = document.getElementById('print-page-numbers');
+                if (tempStyle) tempStyle.remove();
+                
+                // Ocultar elementos de impresión
                 document.querySelector('.print-header').style.display = 'none';
                 document.querySelector('.print-info').style.display = 'none';
+                document.querySelector('.print-footer').style.display = 'none';
                 
                 // Restaurar acordeones a su estado original
-                const firstAccordion = document.getElementById('collapse1');
                 accordionItems.forEach(item => {
                     if (item.id !== 'collapse1') {
                         item.classList.remove('show');
                     }
                 });
                 
-                document.querySelector('.modal-header').classList.remove('print-friendly');
+                // Restaurar estilos de modal
+                modalDialog.style.maxWidth = '';
+                modalDialog.style.width = '';
+                modalDialog.style.margin = '';
+                modalContent.style.border = '';
+                
+                // Restaurar display de accordion bodies
+                document.querySelectorAll('.accordion-body').forEach(body => {
+                    body.style.display = '';
+                    body.style.height = '';
+                    body.style.overflow = '';
+                });
+                
+                // Restaurar elementos de la lista
+                document.querySelectorAll('.list-group-item').forEach(item => {
+                    item.style.marginLeft = '';
+                    item.style.position = '';
+                });
             }, 500);
         }, 300);
     }
