@@ -172,7 +172,18 @@
                                         <small class="text-muted">{{ $message->created_at->format('d/m/Y H:i') }}</small>
                                     </div>
                                     <div class="highlight-content p-3 border rounded">
-                                        {!! nl2br(e($message->content)) !!}
+                                        @php
+                                            $content = e($message->content);
+                                            // Procesar negritas
+                                            $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
+                                            // Procesar cursivas
+                                            $content = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $content);
+                                            // Procesar listas con guiones
+                                            $content = preg_replace('/^- (.*)$/m', '• $1', $content);
+                                            // Procesar saltos de línea
+                                            $content = nl2br($content);
+                                        @endphp
+                                        {!! $content !!}
                                     </div>
                                 </div>
                             @endforeach
@@ -240,12 +251,33 @@
 <!-- Modal de Guía de Intervención -->
 <div class="modal fade" id="interventionModal" tabindex="-1" aria-labelledby="interventionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content" data-date="{{ now()->format('d/m/Y') }}">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title" id="interventionModalLabel">Guía de Intervención</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Cabecera visible solo al imprimir -->
+                <div class="print-header" style="display: none;">
+                    <img src="{{ asset('img/logo.png') }}" alt="SalvaVidas Logo" class="print-logo">
+                    <h1 class="print-title">Guía de Intervención - {{ ucfirst($assessment->risk_level) }}</h1>
+                </div>
+                
+                <!-- Datos del paciente/profesional para impresión -->
+                <div class="print-info mb-4" style="display: none;">
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>Paciente:</strong> {{ $patientName }}</p>
+                            <p><strong>Fecha de evaluación:</strong> {{ $assessment->created_at->format('d/m/Y') }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>Nivel de riesgo:</strong> {{ ucfirst($assessment->risk_level) }}</p>
+                            <p><strong>Profesional:</strong> {{ $professionalName }}</p>
+                        </div>
+                    </div>
+                    <hr>
+                </div>
+                
                 <div class="accordion" id="interventionAccordion">
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="heading1">
@@ -335,7 +367,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Imprimir guía</button>
+                <button type="button" class="btn btn-primary" onclick="printGuide()"><i class="fas fa-print"></i> Imprimir guía</button>
             </div>
         </div>
     </div>
@@ -345,6 +377,7 @@
 
 @push('styles')
 <style>
+    /* Estilos generales */
     .risk-score-circle {
         width: 100px;
         height: 100px;
@@ -434,5 +467,148 @@
             border: 1px solid #dee2e6;
         }
     }
+    /* Estilos para impresión */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #interventionModal, #interventionModal * {
+            visibility: visible;
+        }
+        #interventionModal {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            background-color: white;
+            box-shadow: none;
+            border: none;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+        }
+        .modal-dialog {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .modal-content {
+            border: none;
+            box-shadow: none;
+        }
+        .modal-header {
+            background-color: #fff !important;
+            color: #000 !important;
+            border-bottom: 2px solid #28a745;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+        .modal-header h5 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745 !important;
+        }
+        .accordion-button {
+            background: none !important;
+            color: #28a745 !important;
+            font-weight: bold;
+            font-size: 18px;
+            padding-left: 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .accordion-button::after {
+            display: none;
+        }
+        .accordion-body {
+            padding: 15px 0;
+        }
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 10px 0;
+        }
+        .btn-close, .modal-footer {
+            display: none !important;
+        }
+        /* Añadir pie de página para impresión */
+        .modal-content::after {
+            content: "SalvaVidas - Guía de Intervención - " attr(data-date);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: #777;
+            border-top: 1px solid #ddd;
+        }
+        /* Logotipo para impresión */
+        .print-header {
+            display: flex !important;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 10px;
+        }
+        .print-logo {
+            display: block !important;
+            height: 40px;
+            margin-right: 20px;
+        }
+        .print-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 0;
+        }
+        /* Ocultar acordeones colapsados */
+        .accordion-collapse {
+            display: block !important;
+        }
+    }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    function printGuide() {
+        // Mostrar elementos ocultos para impresión
+        document.querySelector('.print-header').style.display = 'flex';
+        document.querySelector('.print-info').style.display = 'block';
+        
+        // Abrir todos los acordeones para la impresión
+        const accordionItems = document.querySelectorAll('.accordion-collapse');
+        accordionItems.forEach(item => {
+            item.classList.add('show');
+        });
+        
+        // Aplicar clases especiales para impresión
+        document.querySelector('.modal-header').classList.add('print-friendly');
+        
+        // Esperar a que se apliquen los cambios
+        setTimeout(() => {
+            window.print();
+            
+            // Restaurar el estado original después de imprimir
+            setTimeout(() => {
+                document.querySelector('.print-header').style.display = 'none';
+                document.querySelector('.print-info').style.display = 'none';
+                
+                // Restaurar acordeones a su estado original
+                const firstAccordion = document.getElementById('collapse1');
+                accordionItems.forEach(item => {
+                    if (item.id !== 'collapse1') {
+                        item.classList.remove('show');
+                    }
+                });
+                
+                document.querySelector('.modal-header').classList.remove('print-friendly');
+            }, 500);
+        }, 300);
+    }
+</script>
 @endpush
