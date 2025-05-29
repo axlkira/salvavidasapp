@@ -8,7 +8,6 @@ use App\Models\PrincipalIntegrante;
 use App\Models\User;
 use App\Models\Message;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class RiskAssessmentController extends Controller
 {
@@ -26,25 +25,17 @@ class RiskAssessmentController extends Controller
      */
     public function index(Request $request)
     {
-        // Verificar si se solicitó recalcular todas las evaluaciones
-        if ($request->has('recalculate') || $request->has('recalculate_all')) {
-            // Recalcular todas las evaluaciones usando el servicio actualizado
-            $this->recalculateAllRiskAssessments();
-            return redirect()->route('risk-assessment.index')
-                ->with('success', 'Todas las evaluaciones de riesgo han sido recalculadas con el nuevo algoritmo');
-        }
-        
         // Sincronizar todas las evaluaciones de alto riesgo antes de mostrar
         $this->syncAllHighRiskAssessments();
         
         // Forzar sincronización con la base de datos
         \Illuminate\Support\Facades\DB::statement('SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED');
         
+        // Sincronizar evaluaciones de alto riesgo
+        $this->syncAllHighRiskAssessments();
+        
         // Limpiar caché
         \Illuminate\Support\Facades\Cache::forget('risk_alert_count');
-        
-        // Añadir botón para recalcular todos los riesgos
-        $showRecalculateButton = true;
         
         $query = RiskAssessment::query()->with(['conversation', 'riskFactors'])->withoutGlobalScopes();
         
@@ -109,9 +100,7 @@ class RiskAssessmentController extends Controller
                 'status' => $request->status ?? 'all',
                 'date_from' => $request->date_from ?? '',
                 'date_to' => $request->date_to ?? ''
-            ],
-            'show_recalculate_button' => $showRecalculateButton ?? false,
-            'can_recalculate' => true
+            ]
         ]);
     }
     
@@ -140,7 +129,11 @@ class RiskAssessmentController extends Controller
             $assessment->status = $freshData->status;
         }
         
-        // No forzamos puntuación de riesgo, confiamos en la evaluación original del servicio
+        // FORZAR ACTUALIZACIÓN DE ALTO RIESGO: Si el nivel es alto pero el score es bajo, corregir
+        if (in_array(strtolower($assessment->risk_level), ['alto', 'crítico', 'critico']) && $assessment->risk_score < 70) {
+            $assessment->risk_score = 75;
+            $assessment->save();
+        }
         
         // Detectar mensajes con contenido suicida
         $suicidalContent = false;
@@ -168,10 +161,11 @@ class RiskAssessmentController extends Controller
                 }
             }
             
-            // Si hay contenido suicida explícito, marcar para revisión pero no forzar nivel alto
+            // Si hay contenido suicida, forzar nivel alto y guardar
             if ($suicidalContent && !in_array(strtolower($assessment->risk_level), ['alto', 'crítico', 'critico'])) {
-                // Solo actualizamos el estado para que sea revisado, pero respetamos la puntuación original
-                $assessment->status = 'pending';
+                $assessment->risk_level = 'alto';
+                $assessment->risk_score = max($assessment->risk_score, 75);
+                $assessment->status = 'reviewed';
                 $assessment->save();
             }
         }
@@ -347,6 +341,96 @@ class RiskAssessmentController extends Controller
     /**
      * Mostrar listado de alertas críticas de riesgo
      */
+    /**
+     * Sincroniza el nivel de riesgo con la información más reciente
+     * 
+     * @param RiskAssessment $assessment La evaluación a sincronizar
+     * @return void
+     */
+    /**
+     * Sincroniza todas las evaluaciones de alto riesgo en la base de datos
+     */
+    protected function syncAllHighRiskAssessments()
+    {
+        // Buscar todas las evaluaciones de riesgo alto o crítico
+        $highRiskAssessments = RiskAssessment::withoutGlobalScopes()
+            ->where(function($query) {
+                $query->where('risk_level', 'alto')
+                      ->orWhere('risk_level', 'crítico')
+                      ->orWhere('risk_level', 'critico');
+            })
+            ->get();
+        
+        // Actualizar el estado de todas a 'urgent'
+        foreach ($highRiskAssessments as $assessment) {
+            if ($assessment->status !== 'reviewed') {
+                $assessment->status = 'reviewed';
+                $assessment->save();
+                
+                \Illuminate\Support\Facades\Log::info('Estado actualizado a urgent por sincronización', [
+                    'assessment_id' => $assessment->id,
+                    'risk_level' => $assessment->risk_level
+                ]);
+            }
+        }
+        
+        // Ahora buscar todas las evaluaciones donde el status es urgent
+        // pero el nivel de riesgo no coincide
+        $urgentAssessments = RiskAssessment::withoutGlobalScopes()
+            ->where('status', 'urgent')
+            ->whereNotIn('risk_level', ['alto', 'crítico', 'critico'])
+            ->get();
+        
+        // Actualizar el nivel de riesgo a 'alto'
+        foreach ($urgentAssessments as $assessment) {
+            $assessment->risk_level = 'alto';
+            $assessment->risk_score = max($assessment->risk_score, 75);
+            $assessment->save();
+            
+            \Illuminate\Support\Facades\Log::info('Nivel de riesgo actualizado a alto por status urgent', [
+                'assessment_id' => $assessment->id
+            ]);
+        }
+    }
+    
+    protected function syncRiskLevel(RiskAssessment $assessment)
+    {
+        // Verificar si hay discrepancia entre el nivel de riesgo y el estado
+        $riskLevelHigh = in_array(strtolower($assessment->risk_level), ['alto', 'crítico', 'critico']);
+        
+        // Si el riesgo es alto pero el status no es urgent, actualizar
+        if ($riskLevelHigh && $assessment->status !== 'reviewed') {
+            $assessment->status = 'reviewed';
+            $assessment->save();
+            
+            \Illuminate\Support\Facades\Log::info('Estado actualizado a urgent por alto riesgo', [
+                'assessment_id' => $assessment->id,
+                'risk_level' => $assessment->risk_level
+            ]);
+        }
+        
+        // En lugar de verificar la conversación, simplemente verificamos el estado y nivel de riesgo
+        // para asegurar que sean consistentes
+        
+        // Si el nivel es alto pero el estado no es urgent, actualizamos el estado
+        if ($riskLevelHigh && $assessment->status !== 'reviewed') {
+            $assessment->status = 'reviewed';
+            $assessment->save();
+            
+            \Illuminate\Support\Facades\Log::info('Estado actualizado a urgent para alto riesgo', [
+                'assessment_id' => $assessment->id
+            ]);
+            
+            // Limpiar caché del contador
+            \Illuminate\Support\Facades\Cache::forget('risk_alert_count');
+        }
+    }
+    
+    /**
+     * Actualiza el estado de las evaluaciones de riesgo en la base de datos
+     * basado en el nivel de riesgo actual
+     */
+    
     public function alerts()
     {
         // Forzar sincronización con la base de datos
@@ -398,115 +482,5 @@ class RiskAssessmentController extends Controller
             'assessments' => $assessments,
             'assessmentsData' => $assessmentsData,
         ]);
-    }
-    
-    /**
-     * Recalcular todas las evaluaciones de riesgo
-     */
-    public function recalculateAllRiskAssessments()
-    {
-        // Obtener todas las evaluaciones de riesgo
-        $assessments = RiskAssessment::all();
-        $count = 0;
-        
-        try {
-            foreach ($assessments as $assessment) {
-                // Obtener la conversación asociada
-                $conversation = $assessment->conversation;
-                if (!$conversation) {
-                    continue; // Saltar si no hay conversación asociada
-                }
-                
-                // Crear instancia del servicio de detección de riesgo
-                $riskService = app(\App\Services\RiskDetectionService::class);
-                
-                // Recalcular el riesgo basado en la conversación
-                $updatedAssessment = $riskService->detectRiskFromConversation($conversation);
-                
-                // Actualizar la evaluación de riesgo existente
-                $assessment->risk_score = $updatedAssessment->risk_score;
-                $assessment->risk_level = $updatedAssessment->risk_level;
-                $assessment->save();
-                
-                // Registrar la actualización
-                Log::info("Evaluación recalculada", [
-                    'assessment_id' => $assessment->id,
-                    'old_level' => $assessment->getOriginal('risk_level'),
-                    'new_level' => $assessment->risk_level,
-                    'old_score' => $assessment->getOriginal('risk_score'),
-                    'new_score' => $assessment->risk_score
-                ]);
-                
-                $count++;
-            }
-            
-            return $count;
-        } catch (\Exception $e) {
-            // Loguear el error pero continuar con las demás
-            Log::error("Error recalculando evaluaciones de riesgo: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return false;
-        }
-    }
-    
-    /**
-     * Sincronizar todas las evaluaciones de alto riesgo
-     */
-    public function syncAllHighRiskAssessments()
-    {
-        // Buscar evaluaciones de alto riesgo
-        $highRiskAssessments = RiskAssessment::whereIn('risk_level', ['alto', 'crítico', 'critico'])
-                              ->get();
-        
-        foreach ($highRiskAssessments as $assessment) {
-            // Sincronizar el nivel de riesgo con el estado
-            $this->syncRiskLevel($assessment);
-        }
-        
-        // Ya no forzamos nivel de riesgo alto para todas las evaluaciones pendientes
-        // Esto permite que el nivel de riesgo se determine correctamente según la puntuación
-        
-        // Solo actualizamos aquellas que explícitamente están marcadas como urgentes
-        $urgentAssessments = RiskAssessment::where('status', 'urgent')
-                            ->whereNotIn('risk_level', ['alto', 'crítico', 'critico'])
-                            ->get();
-        
-        // Actualizar el nivel de riesgo a 'alto' solo para urgentes explícitos
-        foreach ($urgentAssessments as $assessment) {
-            $assessment->risk_level = 'alto';
-            $assessment->risk_score = max($assessment->risk_score, 75);
-            $assessment->save();
-            
-            Log::info('Nivel de riesgo actualizado a alto por status urgent explícito', [
-                'assessment_id' => $assessment->id
-            ]);
-        }
-        
-        return true;
-    }
-    
-    /**
-     * Sincroniza el nivel de riesgo con el estado para una evaluación específica
-     */
-    public function syncRiskLevel(RiskAssessment $assessment)
-    {
-        // Verificar si hay discrepancia entre el nivel de riesgo y el estado
-        $riskLevelHigh = in_array(strtolower($assessment->risk_level), ['alto', 'crítico', 'critico']);
-        
-        // Si el riesgo es alto pero el status no es reviewed, actualizar
-        if ($riskLevelHigh && $assessment->status !== 'reviewed') {
-            $assessment->status = 'reviewed';
-            $assessment->save();
-            
-            Log::info('Estado actualizado a reviewed por alto riesgo', [
-                'assessment_id' => $assessment->id,
-                'risk_level' => $assessment->risk_level
-            ]);
-            
-            // Limpiar caché del contador
-            \Illuminate\Support\Facades\Cache::forget('risk_alert_count');
-        }
     }
 }

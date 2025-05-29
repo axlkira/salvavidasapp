@@ -10,23 +10,9 @@
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center">
                 <h2>Evaluaciones de Riesgo</h2>
-                <a href="{{ route('risk-assessment.recalculate-all') }}" class="btn btn-primary" onclick="return confirm('¿Estás seguro de que deseas recalcular TODAS las evaluaciones de riesgo con el nuevo algoritmo?')">
-                    <i class="fas fa-sync-alt"></i> Recalcular Todas las Evaluaciones
-                </a>
             </div>
         </div>
     </div>
-    
-    @if(session('success'))
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        </div>
-    </div>
-    @endif
 
 
 

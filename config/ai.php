@@ -5,10 +5,8 @@ return [
     |--------------------------------------------------------------------------
     | Default AI Provider
     |--------------------------------------------------------------------------
-    |
-    | This option controls the default AI service provider that will be used by
-    | the application. By default, we'll use Ollama as the provider running locally.
-    | You are free to modify this value to use a different provider.
+    | esta opcion controla el proveedor de IA por defecto que se utilizara en la aplicacion
+    | puedes cambiarlo a openai, deepseek, grok, etc
     |
     */
     'default_provider' => 'ollama',
@@ -17,10 +15,10 @@ return [
     |--------------------------------------------------------------------------
     | AI Providers Configuration
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure the AI providers that will be available in the application.
-    | Ollama is configured by default to run locally. Additional providers can be
-    | added and configured as needed.
+    | Aqui puede configurar los proveedores de IA que se utilizaran en la aplicacion
+    | 
+    | 
+    | 
     |
     */
     'providers' => [

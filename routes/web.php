@@ -66,6 +66,10 @@ Route::prefix('salvavidasapp')->group(function () {
             Route::get('/{id}', [RiskAssessmentController::class, 'show'])->name('risk-assessment.show');
             Route::post('/{id}/update-status', [RiskAssessmentController::class, 'updateStatus'])->name('risk-assessment.update-status');
             Route::post('/analyze/{conversationId}', [RiskAssessmentController::class, 'analyze'])->name('risk-assessment.analyze');
+            
+            // Nuevas rutas para recalcular evaluaciones de riesgo
+            Route::get('/recalculate/all', [App\Http\Controllers\RecalculateRiskController::class, 'recalculateAll'])->name('risk-assessment.recalculate-all');
+            Route::get('/recalculate/{id}', [App\Http\Controllers\RecalculateRiskController::class, 'recalculateSingle'])->name('risk-assessment.recalculate-single');
         });
         
         // Rutas para el sistema de notificaciones

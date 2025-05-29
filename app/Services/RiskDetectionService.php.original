@@ -426,18 +426,6 @@ class RiskDetectionService
     }
     
     /**
-     * Método alternativo para detectar riesgo a partir de una conversación
-     * Este es un alias de analyzeConversation para mantener compatibilidad
-     * 
-     * @param Conversation $conversation La conversación a analizar
-     * @return RiskAssessment La evaluación de riesgo generada
-     */
-    public function detectRiskFromConversation(Conversation $conversation)
-    {
-        return $this->analyzeConversation($conversation);
-    }
-    
-    /**
      * Analiza la historia clínica para encontrar factores de riesgo adicionales
      * 
      * @param Individual $individual Historia clínica del paciente
